@@ -6,11 +6,16 @@
 (function () {
   'use strict';
 
-  // ── Colour palette (8 DO top-level categories) ──────────────────────────────
+  // ── Colour palette (26 ICD-11 chapters) ─────────────────────────────────────
   const CHAPTER_COLORS = [
     null,
     '#ef4444','#f97316','#f59e0b','#eab308',
     '#84cc16','#22c55e','#10b981','#14b8a6',
+    '#06b6d4','#3b82f6','#6366f1','#8b5cf6',
+    '#a855f7','#d946ef','#ec4899','#f43f5e',
+    '#fb7185','#fbbf24','#a3e635','#34d399',
+    '#22d3ee','#60a5fa','#818cf8','#c084fc',
+    '#e879f9','#f472b6',
   ];
 
   // State
@@ -160,22 +165,22 @@
     const container = qs('#view-home');
     container.innerHTML = '';
     container.appendChild(el('div', { class: 'home-hero' },
-      el('h1', null, '🧬 Disease Directory'),
+      el('h1', null, '🧬 MedDex'),
       el('p', null,
         'Browse ', el('strong', null, DATA.total_diseases.toLocaleString()),
-        ' diseases sourced from the ',
-        el('a', { href: 'https://disease-ontology.org', target: '_blank', rel: 'noopener' },
-           'Human Disease Ontology'),
-        ' with cross-references to ICD-10, OMIM, MESH, NCI, Orphanet and more.'
+        ' diseases organised under the ',
+        el('a', { href: 'https://icd.who.int/en', target: '_blank', rel: 'noopener' },
+           'ICD-11 classification'),
+        ' with causes, symptoms, treatments and clinical data.'
       )
     ));
     container.appendChild(el('div', { class: 'stats-bar' },
       statCard(DATA.tree.length,            'Top Categories'),
       statCard(DATA.total_diseases,          'Diseases'),
       statCard(Object.keys(DATA.flat).length,'Total Nodes'),
-      statCard('DO',                          'Ontology')
+      statCard('ICD-11',                      'Standard')
     ));
-    container.appendChild(el('h2', { style: { margin: '1.5rem 0 .75rem' } }, 'Browse by Category'));
+    container.appendChild(el('h2', { style: { margin: '1.5rem 0 .75rem' } }, 'Browse by Chapter'));
     const grid = el('div', { class: 'chapter-grid' });
     DATA.tree.forEach((ch, i) => {
       const color = CHAPTER_COLORS[i + 1] || '#6366f1';
@@ -196,8 +201,8 @@
     container.appendChild(el('div', { class: 'home-footer' },
       el('a', { href: '#/tree' }, '🌳 View interactive tree'),
       ' · ',
-      el('a', { href: 'https://github.com/DiseaseOntology/HumanDiseaseOntology', target: '_blank', rel: 'noopener' },
-         'Disease Ontology on GitHub')
+      el('a', { href: 'https://icd.who.int/', target: '_blank', rel: 'noopener' },
+         'ICD-11 on WHO Website')
     ));
   }
 
@@ -243,7 +248,7 @@
       el('h1', null, node.name,
         node.is_rare ? el('span', { class: 'badge-rare' }, 'Rare') : null
       ),
-      node.doid ? el('div', { class: 'chapter-code-badge' }, node.doid) : null,
+      node.code ? el('div', { class: 'chapter-code-badge' }, node.code) : null,
       node.desc ? el('p', { class: 'chapter-desc' }, node.desc) : null
     ));
 
@@ -290,7 +295,7 @@
       href:  `#/disease/${d.id}`,
       style: { '--chapter-color': color },
     },
-      el('div', { class: 'dc-code' }, d.doid || d.code || ''),
+      el('div', { class: 'dc-code' }, d.code || ''),
       el('div', { class: 'dc-name' },
         d.name,
         d.is_rare ? el('span', { class: 'badge-rare' }, 'Rare') : null
@@ -333,7 +338,7 @@
         el('h1', null, d.name,
           d.is_rare ? el('span', { class: 'badge-rare' }, 'Rare Disease') : null
         ),
-        el('div', { class: 'icd-code-pill', style: { '--chapter-color': color } }, d.doid || '')
+        el('div', { class: 'icd-code-pill', style: { '--chapter-color': color } }, d.code || '')
       )
     ));
 
@@ -341,63 +346,77 @@
       container.appendChild(el('p', { class: 'disease-desc' }, d.description));
     }
 
+    // Clinical info grid
+    const hasClinInfo = d.affected_worldwide || d.prevalence_text || d.mortality_rate != null || d.onset;
+    if (hasClinInfo) {
+      const grid = el('div', { class: 'clininfo-grid' });
+      if (d.prevalence_text || d.affected_worldwide) {
+        const val = d.prevalence_text || d.affected_worldwide.toLocaleString() + ' worldwide';
+        grid.appendChild(clinCell('Prevalence', val));
+      }
+      if (d.mortality_rate != null) {
+        grid.appendChild(clinCell('Mortality Rate', (d.mortality_rate * 100).toFixed(1) + '%'));
+      }
+      if (d.onset) {
+        grid.appendChild(clinCell('Onset', d.onset.charAt(0).toUpperCase() + d.onset.slice(1)));
+      }
+      if (d.is_rare) {
+        grid.appendChild(clinCell('Classification', 'Rare Disease'));
+      }
+      container.appendChild(el('div', { class: 'clininfo-section' },
+        el('h3', null, 'Clinical Overview'),
+        grid
+      ));
+    }
+
     // Aliases
     const aliases = d.aliases || [];
     if (aliases.length) container.appendChild(tagSection('Also Known As', aliases, 'alias'));
 
-    // Cross-references grid
-    const xrefs = d.xrefs || {};
-    if (Object.keys(xrefs).length > 0) {
-      container.appendChild(xrefSection(xrefs, d.name));
+    // Causes
+    const causes = d.causes || [];
+    if (causes.length) container.appendChild(tagSection('Causes & Risk Factors', causes, 'cause'));
+
+    // Symptoms
+    const symptoms = d.symptoms || [];
+    if (symptoms.length) container.appendChild(tagSection('Signs & Symptoms', symptoms, 'symptom'));
+
+    // Treatments
+    const treatments = d.treatments || [];
+    if (treatments.length) container.appendChild(tagSection('Treatments', treatments, 'treatment'));
+
+    // Sources
+    const sources = d.sources || [];
+    if (sources.length) {
+      container.appendChild(el('div', { class: 'links-section' },
+        el('h3', null, 'References'),
+        el('div', { class: 'links-grid' },
+          ...sources.map(s => el('a', {
+            class: 'ext-link', href: s.url, target: '_blank', rel: 'noopener',
+          }, '📄 ' + s.title))
+        )
+      ));
     }
 
-    container.appendChild(linksSection(xrefs, d.name));
+    container.appendChild(linksSection(d.name));
   }
 
-  function xrefSection(xrefs, name) {
-    const XREF_META = {
-      ICD10CM: { label: 'ICD-10',    urlFn: c => `https://icd.who.int/browse10/2019/en#/${c}` },
-      MIM:     { label: 'OMIM',      urlFn: c => `https://www.omim.org/entry/${c}` },
-      MESH:    { label: 'MeSH',      urlFn: c => `https://meshb.nlm.nih.gov/record/ui?ui=${c}` },
-      NCI:     { label: 'NCI',       urlFn: c => `https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=${c}` },
-      ORDO:    { label: 'Orphanet',  urlFn: c => `https://www.orpha.net/consor/cgi-bin/OC_Exp.php?Expert=${c}` },
-      GARD:    { label: 'NIH GARD',  urlFn: c => `https://rarediseases.info.nih.gov/diseases/${c}/info` },
-    };
-    const section = el('div', { class: 'xref-section' });
-    section.appendChild(el('h3', null, 'Database Cross-References'));
-    const grid = el('div', { class: 'xref-grid' });
-    Object.entries(xrefs).forEach(([key, codes]) => {
-      const meta = XREF_META[key];
-      if (!meta || !codes.length) return;
-      const cell = el('div', { class: 'xref-cell' },
-        el('div', { class: 'xref-label' }, meta.label),
-        el('div', { class: 'xref-codes' },
-          ...codes.map(c => el('a', {
-            href: meta.urlFn(c), target: '_blank', rel: 'noopener',
-            class: 'xref-code',
-          }, c))
-        )
-      );
-      grid.appendChild(cell);
-    });
-    section.appendChild(grid);
-    return section;
+  function clinCell(label, value) {
+    return el('div', { class: 'clininfo-cell' },
+      el('div', { class: 'clininfo-label' }, label),
+      el('div', { class: 'clininfo-value' }, value)
+    );
   }
 
-  function linksSection(xrefs, name) {
-    const links = [];
+  function linksSection(name) {
     const pubmed = name.replace(/\s+/g, '+');
-    links.push({ title: '🔬 PubMed — Latest Research', url: `https://pubmed.ncbi.nlm.nih.gov/?term=${pubmed}&sort=date` });
-    links.push({ title: '📖 Wikipedia', url: `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(name)}` });
-    links.push({ title: '🏥 MedlinePlus', url: `https://medlineplus.gov/search.html?query=${encodeURIComponent(name)}` });
-    links.push({ title: '🔎 ClinicalTrials.gov', url: `https://clinicaltrials.gov/search?cond=${encodeURIComponent(name)}` });
-    for (const mim of (xrefs.MIM || []).slice(0, 1))
-      links.push({ title: `OMIM #${mim}`, url: `https://www.omim.org/entry/${mim}` });
-    for (const gard of (xrefs.GARD || []).slice(0, 1))
-      links.push({ title: `NIH GARD`, url: `https://rarediseases.info.nih.gov/diseases/${gard}/info` });
-    for (const ordo of (xrefs.ORDO || []).slice(0, 1))
-      links.push({ title: `Orphanet`, url: `https://www.orpha.net/consor/cgi-bin/OC_Exp.php?Expert=${ordo}` });
-
+    const links = [
+      { title: '🔬 PubMed — Latest Research', url: `https://pubmed.ncbi.nlm.nih.gov/?term=${pubmed}&sort=date` },
+      { title: '📖 Wikipedia', url: `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(name)}` },
+      { title: '🏥 MedlinePlus', url: `https://medlineplus.gov/search.html?query=${encodeURIComponent(name)}` },
+      { title: '🔎 ClinicalTrials.gov', url: `https://clinicaltrials.gov/search?cond=${encodeURIComponent(name)}` },
+      { title: '🌐 ICD-11 Browser', url: `https://icd.who.int/browse/2025-01/mms/en#search%3D${encodeURIComponent(name)}` },
+    ];
     return el('div', { class: 'links-section' },
       el('h3', null, 'External Resources'),
       el('div', { class: 'links-grid' },
@@ -464,7 +483,7 @@
         (name === q                         ? 20 : 0) +
         (name.startsWith(q)                 ? 15 : 0) +
         (name.includes(q)                   ? 10 : 0) +
-        ((n.doid || '').toLowerCase().includes(q) ?  8 : 0) +
+        ((n.code || '').toLowerCase().includes(q) ?  8 : 0) +
         (desc.includes(q)                   ?  2 : 0);
       if (score > 0) matches.push({ score, node: n });
     });
@@ -478,7 +497,7 @@
     } else {
       top.forEach(({ node: n }) => {
         const item = el('div', { class: 'search-item' },
-          el('span', { class: 's-code' }, n.doid || n.code || ''),
+          el('span', { class: 's-code' }, n.code || ''),
           el('div', null,
             el('div', { class: 's-name' }, n.name),
             el('div', { class: 's-snippet' }, (n.desc || '').slice(0, 80))
