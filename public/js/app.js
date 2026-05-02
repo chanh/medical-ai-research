@@ -83,7 +83,7 @@
       route();
     } catch (e) {
       showView('view-error');
-      qs('#error-msg').textContent = e.message + ' — Make sure you are serving via HTTP (e.g. python3 -m http.server 8080 in the public/ folder)';
+      qs('#error-msg').textContent = e.message + ' — Serve via HTTP: cd public && python3 -m http.server 8080';
     }
   }
 
