@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disease Directory — Human Disease Ontology</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#/" class="logo">🧬 Disease Directory</a>
+      <div class="search-wrap">
+        <input type="search" id="search-input" placeholder="Search diseases, symptoms, codes…" autocomplete="off">
+        <div id="search-results" class="search-dropdown" hidden></div>
+      </div>
+      <nav class="header-nav">
+        <a href="#/">Home</a>
+        <a href="#/tree">Tree View</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <h2 class="sidebar-title">Browse Diseases</h2>
+      <nav id="chapter-nav" class="chapter-list"></nav>
+    </aside>
+    <main id="main-content" class="main-content">
+      <div id="view-home" class="view"></div>
+      <div id="view-chapter" class="view" hidden></div>
+      <div id="view-disease" class="view" hidden></div>
+      <div id="view-tree" class="view" hidden></div>
+      <div id="view-loading" class="view loading-screen">
+        <div class="spinner"></div>
+        <p>Loading disease data…</p>
+      </div>
+      <div id="view-error" class="view error-screen" hidden>
+        <h2>⚠️ Failed to load data</h2>
+        <p id="error-msg"></p>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="js/tree.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
